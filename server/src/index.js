@@ -1,5 +1,5 @@
 import "babel-polyfill";
-import express from "express";
+import express, { request } from "express";
 import { matchRoutes } from "react-router-config";
 import proxy from "express-http-proxy";
 import Routes from "./client/Routes";
@@ -27,8 +27,22 @@ app.get("*", (req, res) => {
     return route.loadData ? route.loadData(store) : null;
   });
 
+  // if the server side content is being rendered on each route request,
+  // then why are all loadDatas simultanesouly rendered
+
   Promise.all(promises).then(() => {
-    res.send(renderer(req, store));
+    const context = {};
+    const content = renderer(req, store, context);
+
+    if (context.url) {
+      return res.redirect(301, context.url);
+    }
+
+    if (context.notFound) {
+      res.status(404);
+    }
+
+    res.send(content);
   });
 });
 
